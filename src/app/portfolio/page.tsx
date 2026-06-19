@@ -75,20 +75,19 @@ export default function PortfolioPage() {
               return (
                 <div 
                   key={item.id} 
-                  className={styles.featuredItem}
+                  className={styles.itemContainer}
                   onClick={() => setSelectedItem(item)}
                 >
-                  <Image 
-                    src={item.image_url} 
-                    alt={item.title || "Tattoo work"} 
-                    fill
-                    sizes="(max-width: 600px) 50vw, (max-width: 1200px) 33vw, 20vw"
-                    className={styles.galleryImage}
-                  />
-                  <div className={styles.itemOverlay}>
-                    <h3 className={styles.itemTitle}>{item.title || "Custom Design"}</h3>
-                    {item.price_gbp && <div className={styles.itemPrice}>from £{item.price_gbp}</div>}
+                  <div className={styles.featuredItem}>
+                    <Image 
+                      src={item.image_url} 
+                      alt={item.title || "Tattoo work"} 
+                      fill
+                      sizes="(max-width: 600px) 50vw, (max-width: 1200px) 33vw, 20vw"
+                      className={styles.galleryImage}
+                    />
                   </div>
+                  <h3 className={styles.itemTitle}>{item.title || "Custom Design"}</h3>
                 </div>
               )
             })}
@@ -103,20 +102,19 @@ export default function PortfolioPage() {
                 return (
                   <div 
                     key={item.id} 
-                    className={styles.standardItem}
+                    className={styles.itemContainer}
                     onClick={() => setSelectedItem(item)}
                   >
-                    <Image 
-                      src={item.image_url} 
-                      alt={item.title || "Tattoo work"} 
-                      fill
-                      sizes="(max-width: 600px) 33vw, (max-width: 1200px) 20vw, 15vw"
-                      className={styles.galleryImage}
-                    />
-                    <div className={styles.itemOverlay}>
-                      <h3 className={styles.itemTitle}>{item.title || "Custom Design"}</h3>
-                      {item.price_gbp && <div className={styles.itemPrice}>from £{item.price_gbp}</div>}
+                    <div className={styles.standardItem}>
+                      <Image 
+                        src={item.image_url} 
+                        alt={item.title || "Tattoo work"} 
+                        fill
+                        sizes="(max-width: 600px) 33vw, (max-width: 1200px) 20vw, 15vw"
+                        className={styles.galleryImage}
+                      />
                     </div>
+                    <h3 className={styles.itemTitle}>{item.title || "Custom Design"}</h3>
                   </div>
                 )
               })}
@@ -142,7 +140,6 @@ export default function PortfolioPage() {
                 />
               <div className={styles.modalInfo}>
                 <h3 className={styles.modalTitle}>{selectedItem.title || "Custom Design"}</h3>
-                {selectedItem.price_gbp && <p className={styles.modalPrice}>Estimated Price: £{selectedItem.price_gbp}</p>}
               </div>
             </div>
           </div>

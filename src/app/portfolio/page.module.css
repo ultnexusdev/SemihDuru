@@ -44,9 +44,7 @@
 }
 
 .featuredItem:hover {
-  transform: scale(1.1); /* Pops out slightly */
-  z-index: 10; /* Brings to front */
-  box-shadow: 0 15px 40px rgba(0,0,0,0.8), 0 0 20px rgba(212, 175, 55, 0.3);
+  /* Hover handled by itemContainer */
 }
 
 /* Standard Grid (Remaining items) - Smaller Squares */
@@ -70,9 +68,7 @@
 }
 
 .standardItem:hover {
-  transform: scale(1.15); /* Pops out a bit more since it's smaller */
-  z-index: 10;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(212, 175, 55, 0.2);
+  /* Hover handled by itemContainer */
 }
 
 .galleryImage {
@@ -88,51 +84,37 @@
   filter: brightness(1) contrast(1.1);
 }
 
-/* Overlay for text */
-.itemOverlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 2rem 1.5rem 1.5rem;
-  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
-  opacity: 0;
-  transform: translateY(10px);
-  transition: all 0.3s ease;
-  pointer-events: none; /* Let hover pass through to container */
-}
-
-.standardItem .itemOverlay {
-  padding: 1rem 0.5rem 0.5rem;
-}
-
-.featuredItem:hover .itemOverlay,
-.standardItem:hover .itemOverlay {
-  opacity: 1;
-  transform: translateY(0);
+.itemContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  cursor: pointer;
 }
 
 .itemTitle {
   color: #fff;
   font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+  font-weight: 500;
+  text-align: center;
+  margin: 0;
+  transition: color 0.3s ease;
 }
 
-.standardItem .itemTitle {
-  font-size: 0.85rem;
-}
-
-.itemPrice {
+.itemContainer:hover .itemTitle {
   color: var(--color-primary);
-  font-weight: 600;
-  font-size: 0.9rem;
-  letter-spacing: 1px;
 }
 
-.standardItem .itemPrice {
-  font-size: 0.75rem;
+.itemContainer:hover .featuredItem,
+.itemContainer:hover .standardItem {
+  transform: scale(1.05);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(212, 175, 55, 0.2);
+  z-index: 10;
+}
+
+/* Remove hover from individual items as it is now handled by container */
+.featuredItem, .standardItem {
+  transition: transform 0.3s ease, box-shadow 0.3s ease, z-index 0s;
+  cursor: pointer;
 }
 
 /* Loading State */
@@ -218,11 +200,6 @@
   color: #fff;
   font-size: 1.5rem;
   margin-bottom: 0.5rem;
-}
-
-.modalPrice {
-  color: var(--color-primary);
-  font-size: 1.1rem;
 }
 
 @keyframes fadeIn {
