@@ -31,6 +31,7 @@ export default function AdminPage() {
   const [uploadFiles, setUploadFiles] = useState<FileList | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadPrice, setUploadPrice] = useState("");
+  const [editingPortfolioItem, setEditingPortfolioItem] = useState<any>(null);
 
   // Settings State
   const [depositAmount, setDepositAmount] = useState("");
@@ -224,6 +225,29 @@ export default function AdminPage() {
     
     await supabase.from('portfolio').delete().eq('id', id);
     fetchData();
+  };
+
+  const handleUpdatePortfolio = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPortfolioItem) return;
+
+    try {
+      const { error } = await supabase
+        .from('portfolio')
+        .update({
+          title: editingPortfolioItem.title,
+          price_gbp: editingPortfolioItem.price_gbp ? parseFloat(editingPortfolioItem.price_gbp) : null
+        })
+        .eq('id', editingPortfolioItem.id);
+
+      if (error) throw error;
+
+      setEditingPortfolioItem(null);
+      fetchData();
+      alert("Portfolio item updated successfully!");
+    } catch (error: any) {
+      alert("Error updating item: " + error.message);
+    }
   };
 
   // --- Calendar & Schedule Functions ---
@@ -618,14 +642,22 @@ export default function AdminPage() {
                       <h4 className={styles.portfolioCardTitle}>{item.title || "Untitled"}</h4>
                       {item.price_gbp && <p className={styles.portfolioPrice}>£{item.price_gbp}</p>}
                     </div>
-                    {/* Delete overlay */}
+                    {/* Edit/Delete overlay */}
                     <div className={styles.portfolioDeleteOverlay}>
-                      <button 
-                        onClick={() => handleDeletePortfolio(item.id, item.image_url)}
-                        className={styles.portfolioDeleteBtn}
-                      >
-                        Delete
-                      </button>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => setEditingPortfolioItem(item)}
+                          className={styles.portfolioEditBtn}
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeletePortfolio(item.id, item.image_url)}
+                          className={styles.portfolioDeleteBtn}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -635,6 +667,41 @@ export default function AdminPage() {
                   </div>
                 )}
               </div>
+
+              {/* EDIT MODAL */}
+              {editingPortfolioItem && (
+                <div className={styles.modalOverlay} onClick={() => setEditingPortfolioItem(null)}>
+                  <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+                    <button className={styles.closeModalBtn} onClick={() => setEditingPortfolioItem(null)}>×</button>
+                    <div className={styles.modalHeader}>
+                      <h2 className={styles.modalTitle}>Edit Portfolio Item</h2>
+                    </div>
+                    <form onSubmit={handleUpdatePortfolio} className="flex flex-col gap-4">
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Title</label>
+                        <input 
+                          type="text" 
+                          className={styles.formInput} 
+                          value={editingPortfolioItem.title || ""} 
+                          onChange={(e) => setEditingPortfolioItem({...editingPortfolioItem, title: e.target.value})}
+                        />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Price (£)</label>
+                        <input 
+                          type="number" 
+                          className={styles.formInput} 
+                          value={editingPortfolioItem.price_gbp || ""} 
+                          onChange={(e) => setEditingPortfolioItem({...editingPortfolioItem, price_gbp: e.target.value})}
+                        />
+                      </div>
+                      <button type="submit" className={styles.loginBtn}>
+                        Save Changes
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
