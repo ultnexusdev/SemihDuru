@@ -19,6 +19,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState("appointments");
   const [appointments, setAppointments] = useState<any[]>([]);
   const [portfolio, setPortfolio] = useState<any[]>([]);
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   
   // Calendar State
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
@@ -89,6 +90,22 @@ export default function AdminPage() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+  };
+
+  const updateAppointmentStatus = async (id: string, newStatus: string) => {
+    const { error } = await supabase
+      .from('appointments')
+      .update({ status: newStatus })
+      .eq('id', id);
+    
+    if (!error) {
+      setAppointments(appointments.map(a => a.id === id ? { ...a, status: newStatus } : a));
+      if (selectedAppointment && selectedAppointment.id === id) {
+        setSelectedAppointment({ ...selectedAppointment, status: newStatus });
+      }
+    } else {
+      alert("Error updating status: " + error.message);
+    }
   };
 
   // --- Portfolio Functions ---
@@ -392,7 +409,7 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td>
-                            <button className={styles.actionBtn}>View Details</button>
+                            <button className={styles.actionBtn} onClick={() => setSelectedAppointment(appt)}>View Details</button>
                           </td>
                         </tr>
                       ))
@@ -590,6 +607,85 @@ export default function AdminPage() {
 
         </div>
       </div>
+
+      {/* APPOINTMENT DETAILS MODAL */}
+      {selectedAppointment && (
+        <div className={styles.modalOverlay} onClick={() => setSelectedAppointment(null)}>
+          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <button className={styles.closeModalBtn} onClick={() => setSelectedAppointment(null)}>×</button>
+            <div className={styles.modalHeader}>
+              <h2 className={styles.modalTitle}>Appointment Details</h2>
+              <span className={`${styles.statusBadge} ${styles['status_' + selectedAppointment.status]}`}>
+                {selectedAppointment.status}
+              </span>
+            </div>
+            
+            <div className={styles.detailRow}>
+              <div className={styles.detailLabel}>Client</div>
+              <div className={styles.detailValue}>{selectedAppointment.client_name}</div>
+            </div>
+            
+            <div className={styles.detailRow}>
+              <div className={styles.detailLabel}>Contact Info</div>
+              <div className={styles.detailValue}>
+                {selectedAppointment.client_email} <br/>
+                {selectedAppointment.client_phone}
+              </div>
+            </div>
+            
+            <div className={styles.detailRow}>
+              <div className={styles.detailLabel}>Date & Time</div>
+              <div className={styles.detailValue}>
+                {new Date(selectedAppointment.appointment_date).toLocaleString('en-GB', { dateStyle: 'full', timeStyle: 'short' })}
+              </div>
+            </div>
+            
+            <div className={styles.detailRow}>
+              <div className={styles.detailLabel}>Deposit Paid</div>
+              <div className={styles.detailValue}>£{selectedAppointment.deposit_amount}</div>
+            </div>
+            
+            <div className={styles.detailRow}>
+              <div className={styles.detailLabel}>Tattoo Idea / Description</div>
+              <div className={styles.detailValue} style={{ whiteSpace: 'pre-wrap' }}>
+                {selectedAppointment.description || "No description provided."}
+              </div>
+            </div>
+            
+            {selectedAppointment.reference_image_url && (
+              <div className={styles.detailRow}>
+                <div className={styles.detailLabel}>Reference Images</div>
+                <div className={styles.referenceImagesGrid}>
+                  {selectedAppointment.reference_image_url.split(',').map((url: string, index: number) => (
+                    <a key={index} href={url} target="_blank" rel="noopener noreferrer">
+                      <img src={url} alt={`Reference ${index + 1}`} className={styles.referenceImage} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div className={styles.modalActions}>
+              {selectedAppointment.status === 'pending' && (
+                <button className={styles.approveBtn} onClick={() => updateAppointmentStatus(selectedAppointment.id, 'confirmed')}>
+                  Approve / Confirm
+                </button>
+              )}
+              {(selectedAppointment.status === 'pending' || selectedAppointment.status === 'confirmed') && (
+                <button className={styles.rejectBtn} onClick={() => updateAppointmentStatus(selectedAppointment.id, 'cancelled')}>
+                  Cancel Appointment
+                </button>
+              )}
+              {selectedAppointment.status === 'confirmed' && (
+                <button className={styles.completeBtn} onClick={() => updateAppointmentStatus(selectedAppointment.id, 'completed')}>
+                  Mark as Completed
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
     <BackToTop />
     </>

@@ -40,6 +40,7 @@ CREATE TABLE appointments (
   client_name VARCHAR(255) NOT NULL,
   client_email VARCHAR(255) NOT NULL,
   client_phone VARCHAR(20),
+  description TEXT,
   appointment_date TIMESTAMP WITH TIME ZONE NOT NULL,
   service_id UUID REFERENCES services(id),
   campaign_id UUID REFERENCES campaigns(id), -- Nullable

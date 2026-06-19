@@ -62,6 +62,8 @@ function BookingForm() {
     phone: "",
     idea: "",
   });
+  
+  const [referenceFiles, setReferenceFiles] = useState<FileList | null>(null);
 
   // Submission State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -116,19 +118,40 @@ function BookingForm() {
     setSubmitError(null);
 
     try {
-      // 1. Create a date object combining selectedDate and selectedTime
-      // E.g. "2026-06-15T15:30:00+01:00"
-      
+      // 1. Upload reference images to Supabase Storage if any
+      let referenceUrls = "";
+      if (referenceFiles && referenceFiles.length > 0) {
+        const filesArray = Array.from(referenceFiles);
+        const uploadedUrls = [];
+        for (const file of filesArray) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${crypto.randomUUID()}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from('reference_images')
+            .upload(fileName, file);
+
+          if (!uploadError) {
+            const { data: publicUrlData } = supabase.storage
+              .from('reference_images')
+              .getPublicUrl(fileName);
+            uploadedUrls.push(publicUrlData.publicUrl);
+          }
+        }
+        referenceUrls = uploadedUrls.join(',');
+      }
+
+      // 2. Create a date object combining selectedDate and selectedTime
       const year = selectedDate.getFullYear();
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
       const day = String(selectedDate.getDate()).padStart(2, '0');
       
       const dateString = `${year}-${month}-${day}T${selectedTime}:00+01:00`; // +1 for BST London
 
-      // 2. Generate UUID for the appointment
+      // 3. Generate UUID for the appointment
       const appointmentId = crypto.randomUUID();
 
-      // 3. Insert into Supabase (without .select() to avoid RLS read violation)
+      // 4. Insert into Supabase (without .select() to avoid RLS read violation)
       const { error } = await supabase
         .from('appointments')
         .insert([
@@ -139,7 +162,8 @@ function BookingForm() {
             client_phone: clientDetails.phone,
             appointment_date: dateString,
             service_id: null,
-            reference_image_url: clientDetails.idea,
+            reference_image_url: referenceUrls,
+            description: clientDetails.idea,
             deposit_paid: false,
             deposit_amount: DEPOSIT_AMOUNT,
             status: 'pending'
@@ -424,6 +448,9 @@ function BookingForm() {
                   if (e.target.files && e.target.files.length > 5) {
                     alert("You can only upload a maximum of 5 images.");
                     e.target.value = ""; // Reset input
+                    setReferenceFiles(null);
+                  } else {
+                    setReferenceFiles(e.target.files);
                   }
                 }}
               />
