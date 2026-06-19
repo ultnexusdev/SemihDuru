@@ -72,6 +72,7 @@ export default function Home() {
             src={PAGE_DATA.heroImage}
             alt="London Social Tattoo Studio"
             fill
+            sizes="100vw"
             priority
             className={styles.bgImage}
           />
@@ -99,6 +100,22 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Guest Spot / Location Banner */}
+      <div className={styles.locationBanner}>
+        <div className={styles.locationItem}>
+          <svg className={styles.locationIcon} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          <div className={styles.locationText}>
+            LONDON <span>Currently Booking</span>
+          </div>
+        </div>
+        <div className={styles.locationItem}>
+          <svg className={styles.locationIcon} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <div className={styles.locationText}>
+            ISTANBUL <span>Upcoming Dates TBD</span>
+          </div>
+        </div>
+      </div>
+
       {/* 3 Column Features Grid */}
       <section className={styles.featuresSection}>
         <div className={`container ${styles.threeColGrid}`}>
@@ -110,6 +127,7 @@ export default function Home() {
                 src={PAGE_DATA.col1Image}
                 alt={PAGE_DATA.col1Title}
                 fill
+                sizes="(max-width: 768px) 100vw, 33vw"
                 className={styles.featureImageHover}
               />
             </div>
@@ -124,6 +142,7 @@ export default function Home() {
                 src={PAGE_DATA.col2Image}
                 alt={PAGE_DATA.col2Title}
                 fill
+                sizes="(max-width: 768px) 100vw, 33vw"
                 className={styles.featureImageHover}
               />
             </div>
@@ -138,6 +157,7 @@ export default function Home() {
                 src={PAGE_DATA.col3Image}
                 alt={PAGE_DATA.col3Title}
                 fill
+                sizes="(max-width: 768px) 100vw, 33vw"
                 className={styles.featureImageHover}
               />
             </div>
@@ -151,6 +171,123 @@ export default function Home() {
             </p>
           </div>
 
+        </div>
+      </section>
+
+      {/* Biologist Story Section */}
+      <section className={styles.bioSection}>
+        <div className={styles.bioContent}>
+          <h2 className={styles.bioQuote}>"Doğanın anatomisini cilde işlemek."</h2>
+          <p className={styles.bioText}>
+            As a biologist turned tattoo artist, I approach every design with scientific precision and a deep appreciation for natural forms. My fine line and microrealistic works are built on a foundation of anatomical and botanical accuracy. I believe that understanding the intricate details of nature allows me to craft pieces that flow perfectly with the human body.
+          </p>
+        </div>
+      </section>
+
+      {/* Healed Tattoos Gallery Slider */}
+      <section className={styles.healedSection}>
+        <div className={styles.healedHeader}>
+          <h2 className={styles.healedTitle}>Built to Last</h2>
+          <p className="text-[var(--color-text-muted)] max-w-2xl mx-auto">
+            The true test of a fine line tattoo is how it looks years later. My techniques ensure that your delicate pieces heal beautifully and stand the test of time without blowing out or fading away.
+          </p>
+        </div>
+        
+        <div className={styles.healedSlider}>
+          {/* Slider Items (Using placeholders for now) */}
+          {[1, 2, 3, 4, 5].map((item) => (
+            <div key={item} className={styles.healedCard}>
+              <div className={styles.healedLabel}>1 Year Healed</div>
+              <Image 
+                src="/tattoo-work.png" 
+                alt={`Healed work ${item}`} 
+                fill 
+                sizes="300px"
+                style={{ objectFit: 'cover' }} 
+              />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Booking Process Flowchart */}
+      <section className={styles.flowSection}>
+        <h2 className="text-3xl text-[var(--color-primary)] mb-2 font-serif">How It Works</h2>
+        <p className="text-[var(--color-text-muted)]">From concept to skin in three simple steps.</p>
+        
+        <div className={styles.flowGrid}>
+          <div className={styles.flowStep}>
+            <div className={styles.flowIconWrapper}>
+              <div className={styles.flowNumber}>1</div>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            </div>
+            <h3 className={styles.flowTitle}>Submit Your Idea</h3>
+            <p className={styles.flowText}>Fill out the booking form with your reference images, placement ideas, and preferred dates.</p>
+          </div>
+          
+          <div className={styles.flowStep}>
+            <div className={styles.flowIconWrapper}>
+              <div className={styles.flowNumber}>2</div>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            </div>
+            <h3 className={styles.flowTitle}>Design Consultation</h3>
+            <p className={styles.flowText}>We will discuss the anatomical flow, sizing, and intricate details to ensure the design perfectly matches your vision.</p>
+          </div>
+          
+          <div className={styles.flowStep}>
+            <div className={styles.flowIconWrapper}>
+              <div className={styles.flowNumber}>3</div>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            </div>
+            <h3 className={styles.flowTitle}>Studio Session</h3>
+            <p className={styles.flowText}>Join me in a sterile, private, and relaxing environment to bring your bespoke ink to life.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className={styles.testiSection}>
+        <div className="text-center">
+          <h2 className="text-3xl text-[var(--color-primary)] font-serif mb-2">Client Experiences</h2>
+          <p className="text-[var(--color-text-muted)]">Don't just take my word for it.</p>
+        </div>
+        
+        <div className={styles.testiGrid}>
+          {/* Review 1 */}
+          <div className={styles.testiCard}>
+            <div className={styles.stars}>
+              {[1,2,3,4,5].map(i => <svg key={i} width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>)}
+            </div>
+            <p className={styles.testiText}>"Semih made my first tattoo experience incredibly comfortable. His attention to hygiene and the sterile environment immediately put me at ease. The fine line work is breathtaking!"</p>
+            <div>
+              <div className={styles.testiAuthor}>Sarah J.</div>
+              <div className={styles.testiPlatform}>Tattoodo Review</div>
+            </div>
+          </div>
+          
+          {/* Review 2 */}
+          <div className={styles.testiCard}>
+            <div className={styles.stars}>
+              {[1,2,3,4,5].map(i => <svg key={i} width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>)}
+            </div>
+            <p className={styles.testiText}>"İnanılmaz bir detaycılık! Semih Bey'in biyoloji geçmişi kesinlikle çizimlerine yansıyor. Çiçek dövmemin anatomisi o kadar kusursuz ki herkes nerede yaptırdığımı soruyor."</p>
+            <div>
+              <div className={styles.testiAuthor}>Elif M.</div>
+              <div className={styles.testiPlatform}>Google Maps</div>
+            </div>
+          </div>
+          
+          {/* Review 3 */}
+          <div className={styles.testiCard}>
+            <div className={styles.stars}>
+              {[1,2,3,4,5].map(i => <svg key={i} width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>)}
+            </div>
+            <p className={styles.testiText}>"I was worried about fine lines fading over time, but 2 years later, my piece still looks crisp. His communication during the design process was top notch."</p>
+            <div>
+              <div className={styles.testiAuthor}>Mark T.</div>
+              <div className={styles.testiPlatform}>Tattoodo Review</div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -177,7 +314,7 @@ export default function Home() {
         <div className={styles.newsletterContent}>
           <h2 className={styles.newsletterTitle}>Join the Newsletter</h2>
           <p className={styles.newsletterText}>
-            Be the first to know about new designs, my travel schedule, and last-minute cancellations.
+            Londra ve Türkiye randevu defterleri açıldığında ilk senin haberin olsun. Yalnızca abonelere özel flash (hazır) tasarımları kaçırma!
           </p>
           <form className={styles.newsletterForm} onSubmit={handleSubscribe}>
             <input 

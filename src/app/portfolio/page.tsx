@@ -77,10 +77,11 @@ export default function PortfolioPage() {
                   className={styles.featuredItem}
                   onClick={() => setSelectedItem(item)}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img 
+                  <Image 
                     src={item.image_url} 
                     alt={item.title || "Tattoo work"} 
+                    fill
+                    sizes="(max-width: 600px) 50vw, (max-width: 1200px) 33vw, 20vw"
                     className={styles.galleryImage}
                   />
                   <div className={styles.itemOverlay}>
@@ -104,10 +105,11 @@ export default function PortfolioPage() {
                     className={styles.standardItem}
                     onClick={() => setSelectedItem(item)}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
+                    <Image 
                       src={item.image_url} 
                       alt={item.title || "Tattoo work"} 
+                      fill
+                      sizes="(max-width: 600px) 33vw, (max-width: 1200px) 20vw, 15vw"
                       className={styles.galleryImage}
                     />
                     <div className={styles.itemOverlay}>
@@ -130,12 +132,13 @@ export default function PortfolioPage() {
               &times;
             </button>
             <div className={styles.modalImageWrapper}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                src={selectedItem.image_url} 
-                alt={selectedItem.title || "Tattoo work"}
-                className="w-full h-full object-contain"
-              />
+                <Image 
+                  src={selectedItem.image_url} 
+                  alt={selectedItem.title || "Tattoo detail"} 
+                  fill
+                  sizes="100vw"
+                  className={styles.modalImage}
+                />
               <div className={styles.modalInfo}>
                 <h3 className={styles.modalTitle}>{selectedItem.title || "Custom Design"}</h3>
                 {selectedItem.price_gbp && <p className={styles.modalPrice}>Estimated Price: £{selectedItem.price_gbp}</p>}

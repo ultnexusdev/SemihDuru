@@ -229,3 +229,18 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* Mobile Grid Fixes */
+@media (max-width: 600px) {
+  .featuredGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  .standardGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+  .featuredItem, .standardItem {
+    border-radius: 4px;
+  }
+}
