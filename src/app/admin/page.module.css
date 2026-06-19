@@ -586,3 +586,86 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* MOBILE OPTIMIZATION FOR ADMIN */
+@media (max-width: 768px) {
+  .dashboard {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    padding: 1rem 0;
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .sidebarHeader {
+    width: 100%;
+    padding: 0 1rem 1rem 1rem;
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+  
+  .navItem {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    border-left: none;
+    border-bottom: 2px solid transparent;
+  }
+  
+  .navItem.active {
+    border-left-color: transparent;
+    border-bottom-color: var(--color-primary);
+  }
+  
+  .logoutBtn {
+    margin-top: 0;
+    padding: 0.5rem 1rem;
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .mainContent {
+    padding: 1rem;
+    width: 100%;
+    max-width: 100vw;
+  }
+  
+  .pageHeader {
+    margin-bottom: 1.5rem;
+  }
+  
+  .pageTitle {
+    font-size: 1.5rem;
+  }
+  
+  .scheduleGrid, .settingsGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .tableContainer {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+  
+  .dataTable {
+    min-width: 600px; /* Forces scroll on small screens instead of crushing content */
+  }
+  
+  .calendarWrapper {
+    width: 100%;
+    max-width: 100%;
+    padding: 1rem;
+  }
+  
+  .timeSlotsGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
