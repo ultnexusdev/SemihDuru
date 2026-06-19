@@ -187,7 +187,7 @@ function BookingForm() {
         },
         body: JSON.stringify({
           appointmentId: appointmentId,
-          depositAmount: DEPOSIT_AMOUNT,
+          depositAmount: depositAmount,
           clientName: clientDetails.name,
           serviceName: currentServiceObj?.name || 'Tattoo Session',
         }),
