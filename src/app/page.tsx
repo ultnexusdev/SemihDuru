@@ -246,6 +246,7 @@ export default function Home() {
 
           {/* Right: Links & Copyright */}
           <div className={styles.footerLinks}>
+            <Link href="/admin" className={styles.privacyLink}>Admin Login</Link>
             <Link href="/privacy" className={styles.privacyLink}>Privacy Policy</Link>
             <span>&copy;2026 All Right Reserved by Semih Duru</span>
           </div>
