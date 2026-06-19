@@ -32,6 +32,11 @@ export default function AdminPage() {
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadPrice, setUploadPrice] = useState("");
 
+  // Settings State
+  const [depositAmount, setDepositAmount] = useState("");
+  const [bioText, setBioText] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -72,6 +77,18 @@ export default function AdminPage() {
       .select('*');
       
     if (!blockedError && blockedData) setBlockedSlots(blockedData);
+
+    // Fetch Settings
+    const { data: settingsData, error: settingsError } = await supabase
+      .from('settings')
+      .select('*');
+
+    if (!settingsError && settingsData) {
+      const depositSetting = settingsData.find(s => s.setting_key === 'deposit_amount_gbp');
+      const bioSetting = settingsData.find(s => s.setting_key === 'bio_text');
+      if (depositSetting) setDepositAmount(depositSetting.setting_value);
+      if (bioSetting) setBioText(bioSetting.setting_value);
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -105,6 +122,33 @@ export default function AdminPage() {
       }
     } else {
       alert("Error updating status: " + error.message);
+    }
+  };
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    
+    try {
+      // Upsert Deposit Amount
+      await supabase.from('settings').upsert({
+        setting_key: 'deposit_amount_gbp',
+        setting_value: depositAmount,
+        description: 'Fixed deposit amount in GBP required for bookings'
+      }, { onConflict: 'setting_key' });
+
+      // Upsert Bio
+      await supabase.from('settings').upsert({
+        setting_key: 'bio_text',
+        setting_value: bioText,
+        description: 'Studio bio displayed on the homepage'
+      }, { onConflict: 'setting_key' });
+
+      alert("Settings saved successfully!");
+    } catch (error: any) {
+      alert("Error saving settings: " + error.message);
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -428,8 +472,9 @@ export default function AdminPage() {
                 <p className="text-[var(--color-text-muted)] mt-2">Manage your calendar by blocking specific days or time slots.</p>
               </div>
               
-              <div className={styles.calendarWrapper}>
-                <div className={styles.calendarHeader}>
+              <div className={styles.scheduleLayout}>
+                <div className={styles.calendarWrapper}>
+                  <div className={styles.calendarHeader}>
                   <button className={styles.calendarNavBtn} onClick={handlePrevMonth}>&lt;</button>
                   <span>{monthNames[month]} {year}</span>
                   <button className={styles.calendarNavBtn} onClick={handleNextMonth}>&gt;</button>
@@ -457,13 +502,13 @@ export default function AdminPage() {
                       </div>
                     );
                   })}
+                  </div>
                 </div>
-              </div>
 
-              {/* TIME SLOTS (Appears when date is selected) */}
-              {selectedDate && (
-                <div className={styles.timeSlotsWrapper}>
-                  <div className={styles.timeSlotsTitle}>
+                {/* TIME SLOTS (Appears when date is selected) */}
+                {selectedDate && (
+                  <div className={styles.timeSlotsWrapper} style={{ marginTop: 0 }}>
+                    <div className={styles.timeSlotsTitle}>
                     <span>
                       Availability for {selectedDate.getDate()} {monthNames[selectedDate.getMonth()]} {selectedDate.getFullYear()}
                     </span>
@@ -503,8 +548,9 @@ export default function AdminPage() {
                       </div>
                     );
                   })()}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -597,11 +643,39 @@ export default function AdminPage() {
             <div className="animate-fade-in">
               <div className={styles.pageHeader}>
                 <h1 className={styles.pageTitle}>Site Settings</h1>
-                <p className="text-[var(--color-text-muted)] mt-2">Update deposit amounts and bio (Coming Soon).</p>
+                <p className="text-[var(--color-text-muted)] mt-2">Update your booking deposit amount and homepage bio.</p>
               </div>
-              <div className="text-center py-12 border border-dashed border-[var(--color-border)] rounded-lg text-[var(--color-text-muted)]">
-                Settings panel is under construction.
-              </div>
+              
+              <form className={styles.settingsForm} onSubmit={handleSaveSettings}>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Deposit Amount (£)</label>
+                  <input 
+                    type="number" 
+                    className={styles.formInput} 
+                    value={depositAmount} 
+                    onChange={e => setDepositAmount(e.target.value)} 
+                    min="0"
+                    step="1"
+                    required
+                  />
+                  <p className="text-xs text-[var(--color-text-muted)] mt-1">This amount will be charged via Stripe when clients book an appointment.</p>
+                </div>
+                
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Homepage Bio / Description</label>
+                  <textarea 
+                    className={styles.formTextarea} 
+                    value={bioText} 
+                    onChange={e => setBioText(e.target.value)} 
+                    placeholder="Hi I'm Semih! My priority is..."
+                    required
+                  ></textarea>
+                </div>
+                
+                <button type="submit" className={styles.saveSettingsBtn} disabled={savingSettings}>
+                  {savingSettings ? "Saving..." : "Save Settings"}
+                </button>
+              </form>
             </div>
           )}
 

@@ -511,3 +511,78 @@
   font-weight: bold;
 }
 .rejectBtn:hover { background-color: rgba(239, 68, 68, 0.1); }
+
+/* SCHEDULE FLEX LAYOUT */
+.scheduleLayout {
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.scheduleLayout > div {
+  flex: 1;
+  min-width: 300px;
+}
+
+/* SETTINGS TAB STYLES */
+.settingsForm {
+  max-width: 600px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 2rem;
+}
+
+.formGroup {
+  margin-bottom: 1.5rem;
+}
+
+.formLabel {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-main);
+  margin-bottom: 0.5rem;
+}
+
+.formInput, .formTextarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: white;
+  font-family: inherit;
+}
+
+.formInput:focus, .formTextarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.formTextarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.saveSettingsBtn {
+  background-color: var(--color-primary);
+  color: #000;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.saveSettingsBtn:hover {
+  opacity: 0.9;
+}
+
+.saveSettingsBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

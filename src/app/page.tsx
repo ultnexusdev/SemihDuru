@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import styles from "./page.module.css";
+import { supabase } from "@/lib/supabaseClient";
 
 // Temporary data (will be moved to Supabase/Admin Panel later)
 const PAGE_DATA = {
@@ -35,6 +36,17 @@ const PAGE_DATA = {
 export default function Home() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [bio, setBio] = useState(PAGE_DATA.heroDescription);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      const { data } = await supabase.from('settings').select('*').eq('setting_key', 'bio_text').single();
+      if (data) {
+        setBio(data.setting_value);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const handleSubscribe = (e: FormEvent) => {
     e.preventDefault();
@@ -73,7 +85,7 @@ export default function Home() {
             Bespoke Ink in a Premium Setting
           </h1>
           <p className={styles.description}>
-            {PAGE_DATA.heroDescription}
+            {bio}
           </p>
           
           <div className={styles.buttonGroup}>
