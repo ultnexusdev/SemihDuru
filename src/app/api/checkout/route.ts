@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   try {
     const { appointmentId, depositAmount, clientName, serviceName } = await req.json();
 
-    const origin = req.headers.get('origin') || 'http://localhost:3000';
+    const origin = req.headers.get('origin') || new URL(req.url).origin;
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],

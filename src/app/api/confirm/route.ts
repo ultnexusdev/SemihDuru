@@ -11,10 +11,10 @@ const CHAT_ID = process.env.TELEGRAM_CHAT_ID!;
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const session_id = searchParams.get('session_id');
-    const appointment_id = searchParams.get('appointment_id');
-    const origin = req.headers.get('origin') || 'http://localhost:3000';
+    const reqUrl = new URL(req.url);
+    const origin = req.headers.get('origin') || reqUrl.origin;
+    const session_id = reqUrl.searchParams.get('session_id');
+    const appointment_id = reqUrl.searchParams.get('appointment_id');
 
     if (!session_id || !appointment_id) {
       return NextResponse.redirect(`${origin}/book?error=missing_params`);
@@ -64,7 +64,7 @@ export async function GET(req: Request) {
 
   } catch (err: any) {
     console.error('Confirmation error:', err);
-    const origin = req.headers.get('origin') || 'http://localhost:3000';
+    const origin = req.headers.get('origin') || new URL(req.url).origin;
     return NextResponse.redirect(`${origin}/book?error=server_error`);
   }
 }
