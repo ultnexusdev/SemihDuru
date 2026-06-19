@@ -3,7 +3,7 @@ import Stripe from 'stripe';
 import { supabase } from '@/lib/supabaseClient';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-01-27.acacia',
+  apiVersion: '2026-05-27.dahlia',
 });
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
