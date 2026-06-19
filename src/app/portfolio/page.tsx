@@ -24,6 +24,7 @@ export default function PortfolioPage() {
       const { data, error } = await supabase
         .from('portfolio')
         .select('*')
+        .neq('is_flash', true)
         .order('created_at', { ascending: true });
 
       if (!error && data) {

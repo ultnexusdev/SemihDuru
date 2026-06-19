@@ -37,15 +37,21 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
   const [bio, setBio] = useState(PAGE_DATA.heroDescription);
+  const [flashTattoos, setFlashTattoos] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchSettingsAndFlash = async () => {
       const { data } = await supabase.from('settings').select('*').eq('setting_key', 'bio_text').single();
       if (data) {
         setBio(data.setting_value);
       }
+      
+      const { data: flashData } = await supabase.from('portfolio').select('*').eq('is_flash', true).limit(10);
+      if (flashData) {
+        setFlashTattoos(flashData);
+      }
     };
-    fetchSettings();
+    fetchSettingsAndFlash();
   }, []);
 
   const handleSubscribe = (e: FormEvent) => {
@@ -177,12 +183,49 @@ export default function Home() {
       {/* Biologist Story Section */}
       <section className={styles.bioSection}>
         <div className={styles.bioContent}>
-          <h2 className={styles.bioQuote}>"Doğanın anatomisini cilde işlemek."</h2>
+          <h2 className={styles.bioQuote}>"Engraving the anatomy of nature onto the skin."</h2>
           <p className={styles.bioText}>
             As a biologist turned tattoo artist, I approach every design with scientific precision and a deep appreciation for natural forms. My fine line and microrealistic works are built on a foundation of anatomical and botanical accuracy. I believe that understanding the intricate details of nature allows me to craft pieces that flow perfectly with the human body.
           </p>
         </div>
       </section>
+
+      {/* Available Flash Tattoos Slider */}
+      {flashTattoos.length > 0 && (
+        <section className={styles.healedSection} style={{ backgroundColor: 'var(--color-bg)' }}>
+          <div className={styles.healedHeader}>
+            <h2 className={styles.healedTitle}>Available Flash Designs</h2>
+            <p className="text-[var(--color-text-muted)] max-w-2xl mx-auto">
+              Ready-to-ink designs available for instant booking. Secure your favorite piece before it's gone.
+            </p>
+          </div>
+          
+          <div className={styles.healedSlider}>
+            {flashTattoos.map((flash) => (
+              <div key={flash.id} className={styles.healedCard} style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ position: 'relative', width: '100%', aspectRatio: '1/1' }}>
+                  <Image 
+                    src={flash.image_url} 
+                    alt={flash.title || "Flash Tattoo"} 
+                    fill 
+                    sizes="300px"
+                    style={{ objectFit: 'cover' }} 
+                  />
+                </div>
+                <div style={{ padding: '1rem', textAlign: 'center', backgroundColor: '#111', flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <h4 style={{ margin: '0 0 0.5rem 0', color: 'white', fontWeight: 600 }}>{flash.title}</h4>
+                    {flash.price_gbp && <p style={{ margin: '0 0 1rem 0', color: 'var(--color-primary)' }}>£{flash.price_gbp}</p>}
+                  </div>
+                  <Link href={`/book?mode=flash&id=${flash.id}`} style={{ display: 'block', backgroundColor: 'var(--color-primary)', color: '#000', padding: '0.5rem', borderRadius: '4px', fontWeight: 'bold', textDecoration: 'none' }}>
+                    Get it now
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Healed Tattoos Gallery Slider */}
       <section className={styles.healedSection}>
@@ -314,7 +357,7 @@ export default function Home() {
         <div className={styles.newsletterContent}>
           <h2 className={styles.newsletterTitle}>Join the Newsletter</h2>
           <p className={styles.newsletterText}>
-            Londra ve Türkiye randevu defterleri açıldığında ilk senin haberin olsun. Yalnızca abonelere özel flash (hazır) tasarımları kaçırma!
+            Be the first to know when London and Turkey booking books open. Don't miss out on subscriber-only flash designs!
           </p>
           <form className={styles.newsletterForm} onSubmit={handleSubscribe}>
             <input 

@@ -95,7 +95,21 @@ function BookingForm() {
 
       // Fetch flash tattoos
       const { data: fData } = await supabase.from('portfolio').select('*').eq('is_flash', true);
-      if (fData) setFlashTattoos(fData);
+      if (fData) {
+        setFlashTattoos(fData);
+        
+        // Auto-select if URL params exist
+        const modeParam = query.get("mode");
+        const idParam = query.get("id");
+        if (modeParam === "flash" && idParam) {
+          setBookingMode("flash");
+          const found = fData.find(f => f.id === idParam);
+          if (found) {
+            setSelectedFlash(found);
+            setCurrentStep(1); // skip to calendar
+          }
+        }
+      }
     };
     fetchInitialData();
   }, []);
@@ -217,6 +231,51 @@ function BookingForm() {
     }
   };
 
+  const handleFlashConsultSubmit = async () => {
+    if (!selectedFlash || !selectedDate || !selectedTime || !clientDetails.name || !clientDetails.email) {
+      setSubmitError("Please fill out all required fields.");
+      return;
+    }
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      let referenceUrls = selectedFlash.image_url || "";
+      
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}T${selectedTime}:00+01:00`;
+
+      const { error } = await supabase
+        .from('appointments')
+        .insert([{
+          client_name: clientDetails.name,
+          client_email: clientDetails.email,
+          client_phone: clientDetails.phone,
+          description: `[FLASH CONSULTATION]\nTitle: ${selectedFlash.title}\n${clientDetails.idea}`,
+          reference_image_url: referenceUrls,
+          status: 'pending',
+          deposit_paid: false,
+          deposit_amount: 0,
+          appointment_date: dateString
+        }]);
+
+      if (error) throw error;
+      
+      setSubmitSuccess(true);
+      
+      // Open WhatsApp
+      const text = encodeURIComponent(`Hi Semih, I would like to book the Flash Tattoo "${selectedFlash.title}" for ${selectedDate.toDateString()} at ${selectedTime}. My name is ${clientDetails.name}.`);
+      window.open(`https://wa.me/905000000000?text=${text}`, '_blank');
+      
+    } catch (err: any) {
+      setSubmitError(err.message || "Failed to submit request.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleCustomSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientDetails.name || !clientDetails.email || !clientDetails.idea) {
@@ -261,6 +320,10 @@ function BookingForm() {
       
       setSubmitSuccess(true);
       setCurrentStep(1); // Move to "Done"
+      
+      // Auto open WhatsApp
+      const text = encodeURIComponent(`Hi Semih, I just submitted a custom design request via your website. My name is ${clientDetails.name}.`);
+      window.open(`https://wa.me/905000000000?text=${text}`, '_blank');
     } catch (err: any) {
       setSubmitError(err.message || "Failed to submit request.");
     } finally {
@@ -371,22 +434,15 @@ function BookingForm() {
               </div>
             )}
 
-            {/* BACK BUTTON (Global) */}
-            {bookingMode !== null && currentStep < STEPS.length - 1 && (
-               <button className="text-[var(--color-primary)] hover:underline mb-6 flex items-center gap-2" onClick={handleBack}>
-                 &larr; Back
-               </button>
-            )}
-
             {/* DIRECT BOOKING - STEP 0 */}
             {bookingMode === 'direct' && currentStep === 0 && (
               <div className="animate-fade-in">
                 <h2 className="text-xl text-[var(--color-text-main)] mb-6 font-semibold">Select Service Duration</h2>
-                <div className={styles.servicesGrid}>
+                <div className={styles.optionsGrid}>
                   {SERVICES.map((service) => (
                     <div 
                       key={service.id} 
-                      className={`${styles.serviceOption} ${selectedService === service.id ? styles.selected : ''}`}
+                      className={`${styles.optionCard} ${selectedService === service.id ? styles.selected : ''}`}
                       onClick={() => setSelectedService(service.id)}
                     >
                       {service.imagePlaceholder ? (
@@ -566,9 +622,22 @@ function BookingForm() {
                       
                       {submitError && <div className={styles.errorMsg}>{submitError}</div>}
                       
-                      <button className={styles.stripeBtn} onClick={() => handleCheckout()} disabled={isSubmitting}>
-                        {isSubmitting ? "Processing..." : "Pay with Stripe"}
-                      </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <button className={styles.stripeBtn} onClick={() => handleCheckout()} disabled={isSubmitting}>
+                          {isSubmitting ? "Processing..." : "Pay Deposit & Book Now"}
+                        </button>
+                        
+                        {bookingMode === 'flash' && (
+                          <button 
+                            className={styles.stripeBtn} 
+                            style={{ backgroundColor: '#25D366', color: '#fff' }} 
+                            onClick={handleFlashConsultSubmit} 
+                            disabled={isSubmitting}
+                          >
+                            {isSubmitting ? "Processing..." : "Consult via WhatsApp (No Deposit Yet)"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </>
                 )}
@@ -583,7 +652,20 @@ function BookingForm() {
                     <div className="text-4xl mb-4">✅</div>
                     <h2 className="text-2xl font-bold text-white mb-2">Request Sent!</h2>
                     <p className="text-[var(--color-text-muted)]">Your custom design inquiry has been submitted. Semih will review your idea and get back to you shortly to discuss pricing and dates.</p>
-                    <Link href="/" className={`${styles.stripeBtn} mt-6 inline-block`} style={{ textDecoration: 'none' }}>Back to Home</Link>
+                    
+                    <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2rem' }}>
+                      <Link href="/" className={`${styles.stripeBtn}`} style={{ textDecoration: 'none', background: 'transparent', border: '1px solid var(--color-border)', color: 'var(--color-text-main)' }}>Back to Home</Link>
+                      
+                      <a 
+                        href={`https://wa.me/905000000000?text=${encodeURIComponent('Hi Semih, I just submitted a custom design request via your website.')}`}
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className={styles.stripeBtn} 
+                        style={{ backgroundColor: '#25D366', color: '#fff', textDecoration: 'none' }}
+                      >
+                        Continue to WhatsApp
+                      </a>
+                    </div>
                   </div>
                 ) : (
                   <div className={styles.customFormWrapper}>
@@ -620,11 +702,17 @@ function BookingForm() {
               </div>
             )}
 
-            {/* NEXT BUTTON (Shared for Direct & Flash) */}
+            {/* NAVIGATION BUTTONS (Shared for Direct & Flash) */}
             {(bookingMode === 'direct' || bookingMode === 'flash') && currentStep < STEPS.length - 1 && (
-              <div className="mt-8 flex justify-end">
+              <div className="mt-8 flex justify-between items-center pt-6 border-t border-[var(--color-border)]">
                 <button 
-                  className={styles.nextBtn} 
+                  className={styles.btnBack} 
+                  onClick={handleBack}
+                >
+                  &larr; Back
+                </button>
+                <button 
+                  className={styles.btnNext} 
                   onClick={handleNext}
                   disabled={(bookingMode === 'direct' && currentStep === 0 && !selectedService) || (bookingMode === 'flash' && currentStep === 0 && !selectedFlash) || (currentStep === 1 && (!selectedDate || !selectedTime))}
                 >
