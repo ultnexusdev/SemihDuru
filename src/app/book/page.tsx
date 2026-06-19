@@ -444,7 +444,7 @@ function BookingForm() {
               </div>
               <div className={styles.summaryRow}>
                 <span>Date & Time:</span>
-                <span>{selectedDate} June 2026 at {selectedTime} (For {currentServiceObj?.time})</span>
+                <span>{selectedDate?.getDate()} {selectedDate ? monthNames[selectedDate.getMonth()] : ''} {selectedDate?.getFullYear()} at {selectedTime} (For {currentServiceObj?.time})</span>
               </div>
               <div className={styles.summaryRow}>
                 <span>Total Service Price:</span>
