@@ -1,0 +1,231 @@
+.portfolioSection {
+  padding: 8rem 2rem 4rem;
+  padding-top: 8rem;
+  min-height: 100vh;
+}
+
+.portfolioHeader {
+  text-align: center;
+  max-width: 700px;
+  margin: 0 auto 4rem auto;
+}
+
+.portfolioTitle {
+  font-size: 3rem;
+  color: var(--color-primary);
+  margin-bottom: 1rem;
+  letter-spacing: 2px;
+}
+
+.portfolioSubtitle {
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  font-size: 1.1rem;
+}
+
+/* Featured Grid (Top 5 items) - Vertical Rectangles */
+.featuredGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto 4rem auto;
+}
+
+.featuredItem {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  background-color: #111;
+  aspect-ratio: 3 / 4; /* Vertical Rectangle */
+  transition: transform 0.3s ease, box-shadow 0.3s ease, z-index 0s;
+  z-index: 1;
+}
+
+.featuredItem:hover {
+  transform: scale(1.1); /* Pops out slightly */
+  z-index: 10; /* Brings to front */
+  box-shadow: 0 15px 40px rgba(0,0,0,0.8), 0 0 20px rgba(212, 175, 55, 0.3);
+}
+
+/* Standard Grid (Remaining items) - Smaller Squares */
+.standardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.standardItem {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  background-color: #111;
+  aspect-ratio: 1 / 1; /* Perfect Square */
+  transition: transform 0.3s ease, box-shadow 0.3s ease, z-index 0s;
+  z-index: 1;
+}
+
+.standardItem:hover {
+  transform: scale(1.15); /* Pops out a bit more since it's smaller */
+  z-index: 10;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 15px rgba(212, 175, 55, 0.2);
+}
+
+.galleryImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: filter 0.6s ease;
+  filter: brightness(0.9) contrast(1.1);
+}
+
+.featuredItem:hover .galleryImage,
+.standardItem:hover .galleryImage {
+  filter: brightness(1) contrast(1.1);
+}
+
+/* Overlay for text */
+.itemOverlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 2rem 1.5rem 1.5rem;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+  pointer-events: none; /* Let hover pass through to container */
+}
+
+.standardItem .itemOverlay {
+  padding: 1rem 0.5rem 0.5rem;
+}
+
+.featuredItem:hover .itemOverlay,
+.standardItem:hover .itemOverlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.itemTitle {
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+.standardItem .itemTitle {
+  font-size: 0.85rem;
+}
+
+.itemPrice {
+  color: var(--color-primary);
+  font-weight: 600;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+}
+
+.standardItem .itemPrice {
+  font-size: 0.75rem;
+}
+
+/* Loading State */
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 50vh;
+  color: var(--color-primary);
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+/* Modal / Lightbox */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.95);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.modalContent {
+  position: relative;
+  max-width: 1000px;
+  max-height: 90vh;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.modalImageWrapper {
+  flex-grow: 1;
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.modalImage {
+  object-fit: contain;
+}
+
+.modalClose {
+  position: absolute;
+  top: -2rem;
+  right: -1rem;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 2rem;
+  cursor: pointer;
+  z-index: 1001;
+  transition: color 0.3s ease;
+}
+
+.modalClose:hover {
+  color: var(--color-primary);
+}
+
+.modalInfo {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 2rem;
+  background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+  text-align: center;
+}
+
+.modalTitle {
+  color: #fff;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.modalPrice {
+  color: var(--color-primary);
+  font-size: 1.1rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
