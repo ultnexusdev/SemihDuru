@@ -31,6 +31,7 @@ export default function AdminPage() {
   const [uploadFiles, setUploadFiles] = useState<FileList | null>(null);
   const [uploadTitle, setUploadTitle] = useState("");
   const [uploadPrice, setUploadPrice] = useState("");
+  const [uploadIsFlash, setUploadIsFlash] = useState(false);
   const [editingPortfolioItem, setEditingPortfolioItem] = useState<any>(null);
 
   // Settings State
@@ -187,7 +188,8 @@ export default function AdminPage() {
             { 
               image_url: publicUrlData.publicUrl,
               title: uploadTitle || file.name.split('.')[0], // Use generic title or filename
-              price_gbp: uploadPrice ? parseFloat(uploadPrice) : null
+              price_gbp: uploadPrice ? parseFloat(uploadPrice) : null,
+              is_flash: uploadIsFlash
             }
           ]);
 
@@ -198,6 +200,7 @@ export default function AdminPage() {
       setUploadFiles(null);
       setUploadTitle("");
       setUploadPrice("");
+      setUploadIsFlash(false);
       
       // Reset the file input visually
       const fileInput = document.getElementById('bulk-upload-input') as HTMLInputElement;
@@ -236,7 +239,8 @@ export default function AdminPage() {
         .from('portfolio')
         .update({
           title: editingPortfolioItem.title,
-          price_gbp: editingPortfolioItem.price_gbp ? parseFloat(editingPortfolioItem.price_gbp) : null
+          price_gbp: editingPortfolioItem.price_gbp ? parseFloat(editingPortfolioItem.price_gbp) : null,
+          is_flash: editingPortfolioItem.is_flash
         })
         .eq('id', editingPortfolioItem.id);
 
@@ -622,6 +626,18 @@ export default function AdminPage() {
                       onChange={(e) => setUploadPrice(e.target.value)}
                     />
                   </div>
+                  <div className={styles.formGroupFull} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+                    <input 
+                      type="checkbox" 
+                      id="isFlashToggle"
+                      checked={uploadIsFlash}
+                      onChange={(e) => setUploadIsFlash(e.target.checked)}
+                      style={{ width: '20px', height: '20px' }}
+                    />
+                    <label htmlFor="isFlashToggle" className={styles.formLabel} style={{ marginBottom: 0, cursor: 'pointer' }}>
+                      ⚡ This is a Flash Tattoo (Available for instant booking)
+                    </label>
+                  </div>
                   <div className={styles.formGroupFull}>
                     <button type="submit" className={styles.loginBtn} disabled={uploading}>
                       {uploading ? "Uploading..." : "Upload to Gallery"}
@@ -639,7 +655,10 @@ export default function AdminPage() {
                       <img src={item.image_url} alt={item.title} className={styles.portfolioImage} />
                     </div>
                     <div className={styles.portfolioInfo}>
-                      <h4 className={styles.portfolioCardTitle}>{item.title || "Untitled"}</h4>
+                      <h4 className={styles.portfolioCardTitle}>
+                        {item.is_flash && <span title="Flash Tattoo" style={{color: '#d4af37', marginRight: '5px'}}>⚡</span>}
+                        {item.title || "Untitled"}
+                      </h4>
                       {item.price_gbp && <p className={styles.portfolioPrice}>£{item.price_gbp}</p>}
                     </div>
                     {/* Edit/Delete overlay */}
@@ -694,6 +713,18 @@ export default function AdminPage() {
                           value={editingPortfolioItem.price_gbp || ""} 
                           onChange={(e) => setEditingPortfolioItem({...editingPortfolioItem, price_gbp: e.target.value})}
                         />
+                      </div>
+                      <div className={styles.formGroup} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <input 
+                          type="checkbox" 
+                          id="editIsFlashToggle"
+                          checked={editingPortfolioItem.is_flash || false}
+                          onChange={(e) => setEditingPortfolioItem({...editingPortfolioItem, is_flash: e.target.checked})}
+                          style={{ width: '20px', height: '20px' }}
+                        />
+                        <label htmlFor="editIsFlashToggle" className={styles.formLabel} style={{ marginBottom: 0, cursor: 'pointer' }}>
+                          ⚡ Flash Tattoo
+                        </label>
                       </div>
                       <button type="submit" className={styles.loginBtn}>
                         Save Changes

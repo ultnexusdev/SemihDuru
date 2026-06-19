@@ -25,27 +25,23 @@ const TIME_SLOTS = [
   "16:00", "16:30", "17:00", "17:30", "18:00"
 ];
 
-
-const STEPS = ["Service", "Date & Time", "Your Details", "Deposit"];
-
 // Helper function to calculate covered slots based on start time and duration
 const getCoveredSlots = (startTime: string | null, durationMins: number) => {
   if (!startTime) return [];
-  
   const startIndex = TIME_SLOTS.indexOf(startTime);
   if (startIndex === -1) return [];
-
-  // Duration in 30-minute intervals
   const slotsNeeded = Math.ceil(durationMins / 30);
-  
-  // Return the slice of TIME_SLOTS that this appointment will cover
-  // We no longer restrict long sessions, so just return what we have without bounds checking
   return TIME_SLOTS.slice(startIndex, startIndex + slotsNeeded);
 };
 
 function BookingForm() {
+  const [bookingMode, setBookingMode] = useState<"direct" | "flash" | "custom" | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
   
+  // Flash State
+  const [flashTattoos, setFlashTattoos] = useState<any[]>([]);
+  const [selectedFlash, setSelectedFlash] = useState<any>(null);
+
   // Form State
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -70,25 +66,24 @@ function BookingForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  // Calculate the currently selected service's duration
+  // Calculate duration
   const currentServiceObj = SERVICES.find(s => s.id === selectedService);
-  const durationMins = currentServiceObj?.durationMins || 30;
-  
-  // Get all slots that should be highlighted if a time is selected
+  // For flash tattoos, assume a 1.5 hr session (90 mins) by default if not specified
+  const durationMins = bookingMode === 'flash' ? 90 : (currentServiceObj?.durationMins || 30);
   const coveredTimeSlots = getCoveredSlots(selectedTime, durationMins);
 
   useEffect(() => {
-    // Check URL parameters for Stripe redirect status
     const query = new URLSearchParams(window.location.search);
     if (query.get("success")) {
+      setBookingMode("direct");
       setCurrentStep(3);
       setSubmitSuccess(true);
     } else if (query.get("canceled")) {
+      setBookingMode("direct");
       setCurrentStep(3);
       setSubmitError("Payment was canceled. You can try again.");
     }
 
-    // Fetch blocked slots and deposit setting
     const fetchInitialData = async () => {
       const { data: bData } = await supabase.from('blocked_slots').select('*');
       if (bData) setBlockedSlots(bData);
@@ -97,11 +92,24 @@ function BookingForm() {
       if (sData && sData.setting_value) {
         setDepositAmount(parseInt(sData.setting_value, 10) || 50);
       }
+
+      // Fetch flash tattoos
+      const { data: fData } = await supabase.from('portfolio').select('*').eq('is_flash', true);
+      if (fData) setFlashTattoos(fData);
     };
     fetchInitialData();
   }, []);
 
+  let STEPS = ["Service", "Date & Time", "Your Details", "Deposit"];
+  if (bookingMode === 'flash') STEPS = ["Select Flash", "Date & Time", "Your Details", "Deposit"];
+  if (bookingMode === 'custom') STEPS = ["Custom Request", "Done"];
+
   const handleNext = () => {
+    if (bookingMode === 'flash' && currentStep === 0 && !selectedFlash) {
+      setSubmitError("Please select a flash tattoo first.");
+      return;
+    }
+    setSubmitError(null);
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(prev => prev + 1);
     }
@@ -110,11 +118,19 @@ function BookingForm() {
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(prev => prev - 1);
+    } else {
+      setBookingMode(null); // Go back to mode selection
+      setSelectedFlash(null);
+      setSelectedService(null);
+      setSelectedDate(null);
+      setSelectedTime(null);
     }
   };
 
-  const handleCheckout = async (paymentMethod: string) => {
-    if (!selectedService || !selectedDate || !selectedTime || !clientDetails.name || !clientDetails.email) {
+  const handleCheckout = async () => {
+    if ((bookingMode === 'direct' && !selectedService) || 
+        (bookingMode === 'flash' && !selectedFlash) || 
+        !selectedDate || !selectedTime || !clientDetails.name || !clientDetails.email) {
       setSubmitError("Please fill out all required fields.");
       return;
     }
@@ -123,7 +139,6 @@ function BookingForm() {
     setSubmitError(null);
 
     try {
-      // 1. Upload reference images to Supabase Storage if any
       let referenceUrls = "";
       if (referenceFiles && referenceFiles.length > 0) {
         const filesArray = Array.from(referenceFiles);
@@ -131,65 +146,58 @@ function BookingForm() {
         for (const file of filesArray) {
           const fileExt = file.name.split('.').pop();
           const fileName = `${crypto.randomUUID()}.${fileExt}`;
-          
-          const { error: uploadError } = await supabase.storage
-            .from('reference_images')
-            .upload(fileName, file);
-
+          const { error: uploadError } = await supabase.storage.from('reference_images').upload(fileName, file);
           if (!uploadError) {
-            const { data: publicUrlData } = supabase.storage
-              .from('reference_images')
-              .getPublicUrl(fileName);
+            const { data: publicUrlData } = supabase.storage.from('reference_images').getPublicUrl(fileName);
             uploadedUrls.push(publicUrlData.publicUrl);
           }
         }
         referenceUrls = uploadedUrls.join(',');
       }
 
-      // 2. Create a date object combining selectedDate and selectedTime
+      // If flash, append the flash image URL to references
+      if (bookingMode === 'flash' && selectedFlash?.image_url) {
+        referenceUrls = referenceUrls ? `${referenceUrls},${selectedFlash.image_url}` : selectedFlash.image_url;
+      }
+
       const year = selectedDate.getFullYear();
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
       const day = String(selectedDate.getDate()).padStart(2, '0');
-      
-      const dateString = `${year}-${month}-${day}T${selectedTime}:00+01:00`; // +1 for BST London
+      const dateString = `${year}-${month}-${day}T${selectedTime}:00+01:00`;
 
-      // 3. Generate UUID for the appointment
       const appointmentId = crypto.randomUUID();
+      const finalDesc = bookingMode === 'flash' ? `[FLASH TATTOO] ${selectedFlash.title}\n${clientDetails.idea}` : clientDetails.idea;
 
-      // 4. Insert into Supabase (without .select() to avoid RLS read violation)
       const { error } = await supabase
         .from('appointments')
-        .insert([
-          {
-            id: appointmentId,
-            client_name: clientDetails.name,
-            client_email: clientDetails.email,
-            client_phone: clientDetails.phone,
-            appointment_date: dateString,
-            service_id: null,
-            reference_image_url: referenceUrls,
-            description: clientDetails.idea,
-            deposit_paid: false,
-            deposit_amount: depositAmount,
-            status: 'pending'
-          }
-        ]);
+        .insert([{
+          id: appointmentId,
+          client_name: clientDetails.name,
+          client_email: clientDetails.email,
+          client_phone: clientDetails.phone,
+          appointment_date: dateString,
+          service_id: null,
+          reference_image_url: referenceUrls,
+          description: finalDesc,
+          deposit_paid: false,
+          deposit_amount: depositAmount,
+          status: 'pending'
+        }]);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
       
-      // 4. Create Stripe Checkout Session
+      const serviceName = bookingMode === 'flash' 
+        ? `Flash Tattoo: ${selectedFlash.title}` 
+        : (currentServiceObj?.name || 'Tattoo Session');
+
       const checkoutRes = await fetch('/api/checkout', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           appointmentId: appointmentId,
           depositAmount: depositAmount,
           clientName: clientDetails.name,
-          serviceName: currentServiceObj?.name || 'Tattoo Session',
+          serviceName: serviceName,
         }),
       });
 
@@ -199,8 +207,6 @@ function BookingForm() {
       }
 
       const { url } = await checkoutRes.json();
-      
-      // Redirect to Stripe Secure Checkout
       window.location.href = url;
       
     } catch (err: any) {
@@ -211,16 +217,64 @@ function BookingForm() {
     }
   };
 
+  const handleCustomSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clientDetails.name || !clientDetails.email || !clientDetails.idea) {
+      setSubmitError("Please fill out all required fields.");
+      return;
+    }
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      let referenceUrls = "";
+      if (referenceFiles && referenceFiles.length > 0) {
+        const filesArray = Array.from(referenceFiles);
+        const uploadedUrls = [];
+        for (const file of filesArray) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${crypto.randomUUID()}.${fileExt}`;
+          const { error: uploadError } = await supabase.storage.from('reference_images').upload(fileName, file);
+          if (!uploadError) {
+            const { data: publicUrlData } = supabase.storage.from('reference_images').getPublicUrl(fileName);
+            uploadedUrls.push(publicUrlData.publicUrl);
+          }
+        }
+        referenceUrls = uploadedUrls.join(',');
+      }
+
+      const { error } = await supabase
+        .from('appointments')
+        .insert([{
+          client_name: clientDetails.name,
+          client_email: clientDetails.email,
+          client_phone: clientDetails.phone,
+          description: `[CUSTOM DESIGN INQUIRY]\n${clientDetails.idea}`,
+          reference_image_url: referenceUrls,
+          status: 'pending',
+          deposit_paid: false,
+          deposit_amount: 0,
+          appointment_date: new Date().toISOString()
+        }]);
+
+      if (error) throw error;
+      
+      setSubmitSuccess(true);
+      setCurrentStep(1); // Move to "Done"
+    } catch (err: any) {
+      setSubmitError(err.message || "Failed to submit request.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Calendar logic
   const year = currentMonthDate.getFullYear();
   const month = currentMonthDate.getMonth();
   const daysInCurrentMonth = new Date(year, month + 1, 0).getDate();
-  const firstDayOfMonth = new Date(year, month, 1).getDay(); // 0 is Sunday, 1 is Monday
-  
-  // Adjust so Monday is 0, Sunday is 6
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
   const startOffset = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
   const daysArray = Array.from({ length: daysInCurrentMonth }, (_, i) => i + 1);
-
   const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
   const handlePrevMonth = () => {
@@ -230,363 +284,366 @@ function BookingForm() {
       setCurrentMonthDate(newDate);
     }
   };
-
   const handleNextMonth = () => {
     const today = new Date();
     const newDate = new Date(year, month + 1, 1);
-    const maxMonthsAhead = 2; // Allow current month + 2 months
-    const maxDate = new Date(today.getFullYear(), today.getMonth() + maxMonthsAhead, 1);
-    if (newDate <= maxDate) {
+    if (newDate <= new Date(today.getFullYear(), today.getMonth() + 2, 1)) {
       setCurrentMonthDate(newDate);
     }
   };
-
   const isDateBlocked = (day: number) => {
-    const y = year;
-    const m = String(month + 1).padStart(2, '0');
-    const d = String(day).padStart(2, '0');
-    const dateStr = `${y}-${m}-${d}`;
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     return blockedSlots.some(slot => slot.date === dateStr && slot.is_whole_day);
   };
-
   const isTimeBlocked = (time: string) => {
     if (!selectedDate) return false;
-    const y = selectedDate.getFullYear();
-    const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
-    const d = String(selectedDate.getDate()).padStart(2, '0');
-    const dateStr = `${y}-${m}-${d}`;
+    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
     return blockedSlots.some(slot => slot.date === dateStr && slot.time === time);
   };
 
   return (
     <>
-    <Navbar />
-    <div className={styles.bookSection} style={{ paddingTop: '100px' }}>
-      <div className={styles.bookHeader}>
-        <h1 className={styles.bookTitle}>Book an Appointment</h1>
-        <p className={styles.bookSubtitle}>
-          Secure your session by selecting your preferred tattoo size and date. 
-          A deposit is required to confirm your booking.
-        </p>
-      </div>
+      <Navbar />
+      <section className={styles.bookSection}>
+        <div className="container">
+          <div className={styles.bookHeader}>
+            <h1 className={styles.bookTitle}>Book an Appointment</h1>
+            <p className={styles.bookSubtitle}>
+              Please select your preferred booking method below to start the process.
+            </p>
+          </div>
 
-      <div className={styles.bookingContainer}>
-        {/* Progress Indicator */}
-        <div className={styles.stepsIndicator}>
-          {STEPS.map((step, index) => (
-            <div 
-              key={step} 
-              className={`${styles.step} ${index === currentStep ? styles.active : ''} ${index < currentStep ? styles.completed : ''}`}
-            >
-              {index + 1}. {step}
-            </div>
-          ))}
-        </div>
+          <div className={styles.bookingContainer}>
+            {/* MODE SELECTION (Step -1) */}
+            {bookingMode === null && (
+              <div className="animate-fade-in">
+                <h2 className="text-xl text-[var(--color-text-main)] mb-2 font-semibold">How would you like to proceed?</h2>
+                <div className={styles.modeSelectionGrid}>
+                  
+                  {/* Option A */}
+                  <div className={styles.modeCard} onClick={() => { setBookingMode('direct'); setCurrentStep(0); }}>
+                    <div className={styles.modeCardHeader}>
+                      <span className={styles.modeIcon}>📅</span>
+                      <div>
+                        <h3 className={styles.modeTitle}>Direct Booking</h3>
+                        <p className={styles.modeDesc}>I know what I want. Book a slot based on duration.</p>
+                      </div>
+                    </div>
+                    <button className={styles.modeBtn}>Select</button>
+                  </div>
 
-        {/* STEP 1: SERVICE SELECTION */}
-        {currentStep === 0 && (
-          <div className="animate-fade-in">
-            <h2 className="text-xl text-[var(--color-text-main)] mb-6 font-semibold">Select Tattoo Size</h2>
-            <div className={styles.optionsGrid}>
-              {SERVICES.map(service => (
-                <div 
-                  key={service.id}
-                  className={`${styles.optionCard} ${selectedService === service.id ? styles.selected : ''}`}
-                  onClick={() => setSelectedService(service.id)}
-                >
-                  {service.imagePlaceholder ? (
-                    <div className={styles.optionImageWrapper}>
-                      <Image 
-                        src={service.imagePlaceholder} 
-                        alt={service.name} 
-                        fill 
-                        className="object-cover"
-                      />
+                  {/* Option B */}
+                  <div className={styles.modeCard} onClick={() => { setBookingMode('flash'); setCurrentStep(0); }}>
+                    <div className={styles.modeCardHeader}>
+                      <span className={styles.modeIcon}>⚡</span>
+                      <div>
+                        <h3 className={styles.modeTitle}>Flash Tattoos</h3>
+                        <p className={styles.modeDesc}>Choose from available pre-drawn designs and book instantly.</p>
+                      </div>
                     </div>
-                  ) : (
-                    <div className={styles.optionImageWrapper}>
-                      <span className={styles.optionImagePlaceholder}>No Image</span>
+                    <button className={styles.modeBtn}>Browse Flash</button>
+                  </div>
+
+                  {/* Option C */}
+                  <div className={styles.modeCard} onClick={() => { setBookingMode('custom'); setCurrentStep(0); }}>
+                    <div className={styles.modeCardHeader}>
+                      <span className={styles.modeIcon}>🎨</span>
+                      <div>
+                        <h3 className={styles.modeTitle}>Custom Design</h3>
+                        <p className={styles.modeDesc}>I have a unique idea and want a personalized piece.</p>
+                      </div>
                     </div>
-                  )}
-                  <div className={styles.optionContent}>
-                    <h3 className={styles.optionTitle}>{service.name}</h3>
-                    {service.desc && <p className={styles.optionDesc}>{service.desc}</p>}
-                    <div className={styles.optionMeta}>
-                      <span className={styles.optionTime}>{service.time}</span>
-                      <span className={styles.optionPrice}>£{service.basePrice}</span>
+                    <button className={styles.modeBtn}>Request Form</button>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+            {/* PROGRESS INDICATOR */}
+            {bookingMode !== null && bookingMode !== 'custom' && (
+              <div className={styles.stepsIndicator}>
+                {STEPS.map((step, idx) => (
+                  <div key={idx} className={`${styles.step} ${idx === currentStep ? styles.active : ''} ${idx < currentStep ? styles.completed : ''}`}>
+                    {idx + 1}. {step}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* BACK BUTTON (Global) */}
+            {bookingMode !== null && currentStep < STEPS.length - 1 && (
+               <button className="text-[var(--color-primary)] hover:underline mb-6 flex items-center gap-2" onClick={handleBack}>
+                 &larr; Back
+               </button>
+            )}
+
+            {/* DIRECT BOOKING - STEP 0 */}
+            {bookingMode === 'direct' && currentStep === 0 && (
+              <div className="animate-fade-in">
+                <h2 className="text-xl text-[var(--color-text-main)] mb-6 font-semibold">Select Service Duration</h2>
+                <div className={styles.servicesGrid}>
+                  {SERVICES.map((service) => (
+                    <div 
+                      key={service.id} 
+                      className={`${styles.serviceOption} ${selectedService === service.id ? styles.selected : ''}`}
+                      onClick={() => setSelectedService(service.id)}
+                    >
+                      {service.imagePlaceholder ? (
+                        <div className={styles.optionImageWrapper}>
+                          <Image src={service.imagePlaceholder} alt={service.name} fill className="object-cover" />
+                        </div>
+                      ) : (
+                        <div className={styles.optionImageWrapper}>
+                          <span className={styles.optionImagePlaceholder}>No Image</span>
+                        </div>
+                      )}
+                      <div className={styles.optionContent}>
+                        <h3 className={styles.optionTitle}>{service.name}</h3>
+                        {service.desc && <p className={styles.optionDesc}>{service.desc}</p>}
+                        <div className={styles.optionMeta}>
+                          <span className={styles.optionTime}>{service.time}</span>
+                          <span className={styles.optionPrice}>£{service.basePrice}</span>
+                        </div>
+                      </div>
                     </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* FLASH BOOKING - STEP 0 */}
+            {bookingMode === 'flash' && currentStep === 0 && (
+              <div className="animate-fade-in">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl text-[var(--color-text-main)] font-semibold">Available Flash Tattoos</h2>
+                  <a href="https://wa.me/905000000000" target="_blank" rel="noopener noreferrer" className="text-sm text-[#25D366] hover:underline flex items-center gap-2">
+                    📱 Consult via WhatsApp
+                  </a>
+                </div>
+                {flashTattoos.length === 0 ? (
+                  <div className="text-center py-10 text-[var(--color-text-muted)] border border-dashed border-[var(--color-border)] rounded-lg">
+                    No flash tattoos currently available. Please check back later or request a custom design!
+                  </div>
+                ) : (
+                  <div className={styles.flashGrid}>
+                    {flashTattoos.map(flash => (
+                      <div 
+                        key={flash.id} 
+                        className={`${styles.flashItem} ${selectedFlash?.id === flash.id ? styles.selected : ''}`}
+                        onClick={() => setSelectedFlash(flash)}
+                      >
+                        <div className={styles.flashImageWrapper}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={flash.image_url} alt={flash.title} className={styles.flashImage} />
+                        </div>
+                        <div className={styles.flashInfo}>
+                          <p className={styles.flashTitle}>{flash.title || "Untitled"}</p>
+                          {flash.price_gbp && <p className={styles.flashPrice}>£{flash.price_gbp}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {submitError && <div className={styles.errorMsg}>{submitError}</div>}
+              </div>
+            )}
+
+            {/* STEP 1: CALENDAR (Shared for Direct & Flash) */}
+            {(bookingMode === 'direct' || bookingMode === 'flash') && currentStep === 1 && (
+              <div className="animate-fade-in">
+                <h2 className="text-xl text-[var(--color-text-main)] mb-6 font-semibold">Select a Date & Time</h2>
+                <div className={styles.calendarWrapper}>
+                  <div className={styles.calendarHeader}>
+                    <button className={styles.calendarNavBtn} onClick={handlePrevMonth}>&lt;</button>
+                    <span>{monthNames[month]} {year}</span>
+                    <button className={styles.calendarNavBtn} onClick={handleNextMonth}>&gt;</button>
+                  </div>
+                  <div className={styles.calendarGrid}>
+                    {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => (
+                      <div key={day} className={styles.calendarDayName}>{day}</div>
+                    ))}
+                    {Array.from({ length: startOffset }).map((_, i) => (
+                      <div key={`empty-${i}`} className={styles.calendarDay + " " + styles.disabled}></div>
+                    ))}
+                    {daysArray.map(day => {
+                      const isDisabled = isDateBlocked(day);
+                      const isSelected = selectedDate?.getDate() === day && selectedDate?.getMonth() === month && selectedDate?.getFullYear() === year;
+                      return (
+                        <div 
+                          key={day}
+                          className={`${styles.calendarDay} ${isDisabled ? styles.disabled : ''} ${isSelected ? styles.selected : ''}`}
+                          onClick={() => { if (!isDisabled) { setSelectedDate(new Date(year, month, day)); setSelectedTime(null); } }}
+                        >
+                          {day}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* STEP 2: DATE & TIME (Calendar) */}
-        {currentStep === 1 && (
-          <div className="animate-fade-in">
-            <h2 className="text-xl text-[var(--color-text-main)] mb-6 font-semibold">Select a Date & Time</h2>
-            <div className={styles.calendarWrapper}>
-              <div className={styles.calendarHeader}>
-                <button className={styles.calendarNavBtn} onClick={handlePrevMonth}>&lt;</button>
-                <span>{monthNames[month]} {year}</span>
-                <button className={styles.calendarNavBtn} onClick={handleNextMonth}>&gt;</button>
-              </div>
-              <div className={styles.calendarGrid}>
-                {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => (
-                  <div key={day} className={styles.calendarDayName}>{day}</div>
-                ))}
-                {/* Empty slots for starting day offset */}
-                {Array.from({ length: startOffset }).map((_, i) => (
-                  <div key={`empty-${i}`} className={styles.calendarDay + " " + styles.disabled}></div>
-                ))}
-                
-                {daysArray.map(day => {
-                  const isDisabled = isDateBlocked(day);
-                  const isSelected = selectedDate?.getDate() === day && selectedDate?.getMonth() === month && selectedDate?.getFullYear() === year;
-
-                  return (
-                    <div 
-                      key={day}
-                      className={`${styles.calendarDay} ${isDisabled ? styles.disabled : ''} ${isSelected ? styles.selected : ''}`}
-                      onClick={() => {
-                        if (!isDisabled) {
-                          setSelectedDate(new Date(year, month, day));
-                          setSelectedTime(null); // Reset time when date changes
-                        }
-                      }}
-                    >
-                      {day}
+                {selectedDate && (
+                  <div className={styles.timeSlotsWrapper}>
+                    <h3 className={styles.timeSlotsTitle}>
+                      Available Time Slots
+                      <span className="block text-sm text-[var(--color-text-muted)] mt-1 font-normal">
+                        (Showing required time for your {bookingMode === 'flash' ? '1.5 hr' : currentServiceObj?.time} session)
+                      </span>
+                    </h3>
+                    <div className={styles.timeSlotsGrid}>
+                      {TIME_SLOTS.map((time) => {
+                        const isCovered = coveredTimeSlots.includes(time);
+                        const isBlocked = isTimeBlocked(time);
+                        return (
+                          <button 
+                            key={time}
+                            className={`${styles.timeSlotBtn} ${isCovered ? styles.selected : ''}`}
+                            disabled={isBlocked}
+                            style={{ opacity: isBlocked ? 0.3 : 1, cursor: isBlocked ? 'not-allowed' : 'pointer' }}
+                            onClick={() => { if (!isBlocked) setSelectedTime(time); }}
+                          >
+                            {time}
+                          </button>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* TIME SLOTS (Appears when date is selected) */}
-            {selectedDate && (
-              <div className={styles.timeSlotsWrapper}>
-                <h3 className={styles.timeSlotsTitle}>
-                  Available Time Slots for {selectedDate.getDate()} {monthNames[selectedDate.getMonth()]}
-                  <span className="block text-sm text-[var(--color-text-muted)] mt-1 font-normal">
-                    (Showing required time for your {currentServiceObj?.time} session)
-                  </span>
-                </h3>
-                <div className={styles.timeSlotsGrid}>
-                  {TIME_SLOTS.map((time) => {
-                    const isCovered = coveredTimeSlots.includes(time);
-                    const isBlocked = isTimeBlocked(time);
-                    
-                    return (
-                      <button 
-                        key={time}
-                        className={`${styles.timeSlotBtn} ${isCovered ? styles.selected : ''}`}
-                        disabled={isBlocked}
-                        style={{ opacity: isBlocked ? 0.3 : 1, cursor: isBlocked ? 'not-allowed' : 'pointer' }}
-                        onClick={() => {
-                          if (!isBlocked) {
-                            setSelectedTime(time);
-                          }
-                        }}
-                      >
-                        {time}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* STEP 3: CLIENT DETAILS */}
-        {currentStep === 2 && (
-          <div className="animate-fade-in">
-            <h2 className="text-xl text-[var(--color-text-main)] mb-6 font-semibold">Your Details</h2>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Full Name</label>
-              <input 
-                type="text" 
-                className={styles.formInput} 
-                placeholder="John Doe"
-                value={clientDetails.name}
-                onChange={e => setClientDetails({...clientDetails, name: e.target.value})}
-              />
-            </div>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Email Address</label>
-              <input 
-                type="email" 
-                className={styles.formInput} 
-                placeholder="john@example.com"
-                value={clientDetails.email}
-                onChange={e => setClientDetails({...clientDetails, email: e.target.value})}
-              />
-            </div>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Phone Number (Optional)</label>
-              <input 
-                type="tel" 
-                className={styles.formInput} 
-                placeholder="+44 7000 000000"
-                value={clientDetails.phone}
-                onChange={e => setClientDetails({...clientDetails, phone: e.target.value})}
-              />
-            </div>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Tattoo Idea / Description</label>
-              <textarea 
-                className={styles.formTextarea} 
-                placeholder="Describe your idea, placement, and any specific details..."
-                value={clientDetails.idea}
-                onChange={e => setClientDetails({...clientDetails, idea: e.target.value})}
-              ></textarea>
-            </div>
-            <div className={styles.formGroup}>
-              <label className={styles.formLabel}>Reference Images (Max 5)</label>
-              <input 
-                type="file" 
-                multiple 
-                accept="image/*" 
-                className={styles.formInput} 
-                onChange={(e) => {
-                  if (e.target.files && e.target.files.length > 5) {
-                    alert("You can only upload a maximum of 5 images.");
-                    e.target.value = ""; // Reset input
-                    setReferenceFiles(null);
-                  } else {
-                    setReferenceFiles(e.target.files);
-                  }
-                }}
-              />
-              <p className="text-sm text-[var(--color-text-muted)] mt-2">Upload pictures of tattoos you like or sketches you've made to help me understand what you're looking for.</p>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 4: PAYMENT (Deposit) */}
-        {currentStep === 3 && (
-          <div className="animate-fade-in">
-            <h2 className="text-xl text-[var(--color-text-main)] mb-6 font-semibold">Confirm & Pay Deposit</h2>
-            
-            <div className={styles.paymentSummary}>
-              <div className={styles.summaryRow}>
-                <span>Selected Service:</span>
-                <span>{currentServiceObj?.name}</span>
-              </div>
-              <div className={styles.summaryRow}>
-                <span>Date & Time:</span>
-                <span>{selectedDate?.getDate()} {selectedDate ? monthNames[selectedDate.getMonth()] : ''} {selectedDate?.getFullYear()} at {selectedTime} (For {currentServiceObj?.time})</span>
-              </div>
-              <div className={styles.summaryRow}>
-                <span>Total Service Price:</span>
-                <span>£{currentServiceObj?.basePrice}</span>
-              </div>
-              <div className={styles.summaryTotal}>
-                <span>Deposit Required Now:</span>
-                <span className="text-[var(--color-primary)]">£{depositAmount}.00</span>
-              </div>
-              <p className={styles.depositNote}>
-                * This deposit secures your appointment and will be deducted from the final price of your tattoo.
-              </p>
-            </div>
-
-            {submitError && (
-              <div className="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded mb-6">
-                {submitError}
+                  </div>
+                )}
               </div>
             )}
 
-            {submitSuccess ? (
-              <div className="text-center py-8 animate-fade-in">
-                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
+            {/* STEP 2: DETAILS (Shared for Direct & Flash) */}
+            {(bookingMode === 'direct' || bookingMode === 'flash') && currentStep === 2 && (
+              <div className="animate-fade-in">
+                <h2 className="text-xl text-[var(--color-text-main)] mb-6 font-semibold">Your Details</h2>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Full Name</label>
+                  <input type="text" className={styles.formInput} placeholder="John Doe" value={clientDetails.name} onChange={e => setClientDetails({...clientDetails, name: e.target.value})} />
                 </div>
-                <h3 className="text-2xl font-semibold mb-2 text-white">Booking Requested!</h3>
-                <p className="text-[var(--color-text-muted)] mb-6">
-                  Your appointment data has been successfully saved to Supabase.<br/>
-                  (In the final version, you would be redirected to Stripe right now).
-                </p>
-                <button onClick={() => window.location.reload()} className="btn btn-outline">Start Over</button>
-              </div>
-            ) : (
-              <div className={styles.paymentButtons}>
-                {/* Credit Card (Stripe) */}
-                <button 
-                  className={styles.stripeBtn} 
-                  style={{backgroundColor: '#0a2540'}}
-                  onClick={() => handleCheckout('stripe')}
-                  disabled={isSubmitting}
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect>
-                    <line x1="2" y1="10" x2="22" y2="10"></line>
-                  </svg>
-                  {isSubmitting ? "Processing..." : `Pay £${depositAmount} with Credit Card`}
-                </button>
-
-                {/* Google Pay */}
-                <button 
-                  className={styles.stripeBtn} 
-                  style={{backgroundColor: '#000', color: '#fff', border: '1px solid #333'}}
-                  onClick={() => handleCheckout('googlepay')}
-                  disabled={isSubmitting}
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 15.907 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
-                  </svg>
-                  Google Pay
-                </button>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Email Address</label>
+                  <input type="email" className={styles.formInput} placeholder="john@example.com" value={clientDetails.email} onChange={e => setClientDetails({...clientDetails, email: e.target.value})} />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Phone Number (Optional)</label>
+                  <input type="tel" className={styles.formInput} placeholder="+44 7000 000000" value={clientDetails.phone} onChange={e => setClientDetails({...clientDetails, phone: e.target.value})} />
+                </div>
                 
+                {bookingMode === 'direct' && (
+                  <div className={styles.formGroup}>
+                    <label className={styles.formLabel}>Reference Images (Max 5)</label>
+                    <input type="file" multiple accept="image/*" className={styles.formInput} onChange={(e) => setReferenceFiles(e.target.files)} />
+                    <p className="text-sm text-[var(--color-text-muted)] mt-2">Upload reference photos, placement area, or sketches.</p>
+                  </div>
+                )}
+                
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Tattoo Idea / Description {bookingMode === 'flash' && "(Optional)"}</label>
+                  <textarea className={styles.formTextarea} placeholder={bookingMode === 'flash' ? "Any specific placement requests or details..." : "Describe your idea, placement, and any specific details..."} value={clientDetails.idea} onChange={e => setClientDetails({...clientDetails, idea: e.target.value})}></textarea>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: DEPOSIT (Shared for Direct & Flash) */}
+            {(bookingMode === 'direct' || bookingMode === 'flash') && currentStep === 3 && (
+              <div className="animate-fade-in text-center">
+                {submitSuccess ? (
+                  <div className={styles.successMessage}>
+                    <div className="text-4xl mb-4">✅</div>
+                    <h2 className="text-2xl font-bold text-white mb-2">Booking Confirmed!</h2>
+                    <p className="text-[var(--color-text-muted)]">Your deposit has been paid and your appointment is secured. You will receive an email confirmation shortly.</p>
+                    <Link href="/" className={`${styles.stripeBtn} mt-6 inline-block`} style={{ textDecoration: 'none' }}>Back to Home</Link>
+                  </div>
+                ) : (
+                  <>
+                    <h2 className="text-xl text-[var(--color-text-main)] mb-6 font-semibold">Secure Your Appointment</h2>
+                    <div className={styles.depositBox}>
+                      <p className="text-[var(--color-text-muted)] mb-2">Required Deposit</p>
+                      <h3 className="text-4xl text-[var(--color-primary)] font-bold mb-4">£{depositAmount}</h3>
+                      <p className="text-sm text-[var(--color-text-muted)] mb-8 max-w-md mx-auto">
+                        This deposit secures your date and time. It is non-refundable and will be deducted from the final price of your tattoo.
+                      </p>
+                      
+                      {submitError && <div className={styles.errorMsg}>{submitError}</div>}
+                      
+                      <button className={styles.stripeBtn} onClick={() => handleCheckout()} disabled={isSubmitting}>
+                        {isSubmitting ? "Processing..." : "Pay with Stripe"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* CUSTOM DESIGN FORM (Option C) */}
+            {bookingMode === 'custom' && (
+              <div className="animate-fade-in">
+                {submitSuccess ? (
+                  <div className={styles.successMessage}>
+                    <div className="text-4xl mb-4">✅</div>
+                    <h2 className="text-2xl font-bold text-white mb-2">Request Sent!</h2>
+                    <p className="text-[var(--color-text-muted)]">Your custom design inquiry has been submitted. Semih will review your idea and get back to you shortly to discuss pricing and dates.</p>
+                    <Link href="/" className={`${styles.stripeBtn} mt-6 inline-block`} style={{ textDecoration: 'none' }}>Back to Home</Link>
+                  </div>
+                ) : (
+                  <div className={styles.customFormWrapper}>
+                    <h2 className="text-2xl text-[var(--color-primary)] mb-2 font-semibold">Custom Design Request</h2>
+                    <p className="text-[var(--color-text-muted)] mb-6">Tell us about your unique idea. We will get back to you with a consultation and booking link.</p>
+                    <form onSubmit={handleCustomSubmit}>
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Full Name</label>
+                        <input type="text" className={styles.formInput} placeholder="John Doe" value={clientDetails.name} onChange={e => setClientDetails({...clientDetails, name: e.target.value})} required />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Email Address</label>
+                        <input type="email" className={styles.formInput} placeholder="john@example.com" value={clientDetails.email} onChange={e => setClientDetails({...clientDetails, email: e.target.value})} required />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Phone Number (WhatsApp)</label>
+                        <input type="tel" className={styles.formInput} placeholder="+44 7000 000000" value={clientDetails.phone} onChange={e => setClientDetails({...clientDetails, phone: e.target.value})} required />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Detailed Idea & Placement</label>
+                        <textarea className={styles.formTextarea} style={{ minHeight: '150px' }} placeholder="Describe your idea in detail, where you want it placed, approximate size in cm, etc..." value={clientDetails.idea} onChange={e => setClientDetails({...clientDetails, idea: e.target.value})} required></textarea>
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label className={styles.formLabel}>Reference Images (Max 5)</label>
+                        <input type="file" multiple accept="image/*" className={styles.formInput} onChange={(e) => setReferenceFiles(e.target.files)} />
+                      </div>
+                      {submitError && <div className={styles.errorMsg}>{submitError}</div>}
+                      <button type="submit" className={`${styles.stripeBtn} w-full`} disabled={isSubmitting}>
+                        {isSubmitting ? "Submitting..." : "Submit Inquiry"}
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* NEXT BUTTON (Shared for Direct & Flash) */}
+            {(bookingMode === 'direct' || bookingMode === 'flash') && currentStep < STEPS.length - 1 && (
+              <div className="mt-8 flex justify-end">
                 <button 
-                  className={styles.paypalBtn}
-                  onClick={() => handleCheckout('paypal')}
-                  disabled={isSubmitting}
+                  className={styles.nextBtn} 
+                  onClick={handleNext}
+                  disabled={(bookingMode === 'direct' && currentStep === 0 && !selectedService) || (bookingMode === 'flash' && currentStep === 0 && !selectedFlash) || (currentStep === 1 && (!selectedDate || !selectedTime))}
                 >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106z"/>
-                  </svg>
-                  PayPal
+                  Continue &rarr;
                 </button>
               </div>
             )}
+
           </div>
-        )}
-
-        {/* Navigation */}
-        <div className={styles.actionButtons}>
-          {currentStep > 0 ? (
-            <button className={styles.btnBack} onClick={handleBack}>Back</button>
-          ) : (
-            <Link href="/" className={styles.btnBack}>Cancel</Link>
-          )}
-          
-          {currentStep < STEPS.length - 1 && (
-            <button 
-              className={styles.btnNext} 
-              onClick={handleNext}
-              disabled={
-                (currentStep === 0 && !selectedService) || 
-                (currentStep === 1 && (!selectedDate || !selectedTime))
-              }
-            >
-              Continue
-            </button>
-          )}
         </div>
-
-      </div>
-    </div>
-    <BackToTop />
+      </section>
+      <BackToTop />
     </>
   );
 }
 
 export default function BookPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center text-white">Loading...</div>}>
       <BookingForm />
     </Suspense>
   );

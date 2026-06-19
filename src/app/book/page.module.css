@@ -441,3 +441,144 @@
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* BOOKING MODES (Step -1) */
+.modeSelectionGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.modeCard {
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.modeCard:hover {
+  background-color: rgba(212, 175, 55, 0.05);
+  border-color: var(--color-primary);
+  transform: translateY(-2px);
+}
+
+.modeCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.modeIcon {
+  font-size: 2rem;
+}
+
+.modeTitle {
+  font-size: 1.3rem;
+  color: var(--color-primary);
+  margin: 0;
+}
+
+.modeDesc {
+  color: var(--color-text-muted);
+  line-height: 1.5;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.modeBtn {
+  background: transparent;
+  color: var(--color-text-main);
+  border: 1px solid var(--color-border);
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.85rem;
+  margin-top: 1rem;
+  align-self: flex-start;
+  transition: all 0.3s ease;
+}
+
+.modeCard:hover .modeBtn {
+  background-color: var(--color-primary);
+  color: #000;
+  border-color: var(--color-primary);
+}
+
+/* FLASH TATTOO GALLERY */
+.flashGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.flashItem {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #000;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.flashItem:hover {
+  border-color: var(--color-primary);
+  transform: translateY(-4px);
+}
+
+.flashItem.selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+}
+
+.flashImageWrapper {
+  aspect-ratio: 1/1;
+  position: relative;
+  width: 100%;
+}
+
+.flashImage {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.flashInfo {
+  padding: 1rem;
+  text-align: center;
+}
+
+.flashTitle {
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.flashPrice {
+  color: var(--color-primary);
+  font-size: 1rem;
+  font-weight: bold;
+  margin: 0;
+}
+
+.customFormWrapper {
+  background-color: rgba(255,255,255,0.02);
+  padding: 2rem;
+  border-radius: 8px;
+  border: 1px dashed var(--color-border);
+}
