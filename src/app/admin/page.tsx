@@ -566,7 +566,7 @@ export default function AdminPage() {
               <div className="bg-[var(--color-surface)] border border-[var(--color-border)] p-6 rounded-lg mb-8 max-w-2xl">
                 <h3 className="text-lg text-[var(--color-primary)] font-semibold mb-4">Add New Tattoo</h3>
                 <form onSubmit={handleImageUpload} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
+                  <div className={styles.formGroupFull}>
                     <label className={styles.formLabel}>Image Files (You can select multiple)</label>
                     <input 
                       id="bulk-upload-input"
@@ -598,7 +598,7 @@ export default function AdminPage() {
                       onChange={(e) => setUploadPrice(e.target.value)}
                     />
                   </div>
-                  <div className="md:col-span-2 mt-2">
+                  <div className={styles.formGroupFull}>
                     <button type="submit" className={styles.loginBtn} disabled={uploading}>
                       {uploading ? "Uploading..." : "Upload to Gallery"}
                     </button>
@@ -607,22 +607,22 @@ export default function AdminPage() {
               </div>
 
               {/* GALLERY GRID */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className={styles.portfolioGrid}>
                 {portfolio.map(item => (
-                  <div key={item.id} className="border border-[var(--color-border)] rounded-lg overflow-hidden bg-black relative group">
-                    <div className="aspect-square relative">
+                  <div key={item.id} className={styles.portfolioCard}>
+                    <div className={styles.portfolioImageWrapper}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+                      <img src={item.image_url} alt={item.title} className={styles.portfolioImage} />
                     </div>
-                    <div className="p-3">
-                      <h4 className="text-white font-semibold text-sm truncate">{item.title || "Untitled"}</h4>
-                      {item.price_gbp && <p className="text-[var(--color-primary)] text-sm">£{item.price_gbp}</p>}
+                    <div className={styles.portfolioInfo}>
+                      <h4 className={styles.portfolioCardTitle}>{item.title || "Untitled"}</h4>
+                      {item.price_gbp && <p className={styles.portfolioPrice}>£{item.price_gbp}</p>}
                     </div>
                     {/* Delete overlay */}
-                    <div className="absolute inset-0 bg-black/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className={styles.portfolioDeleteOverlay}>
                       <button 
                         onClick={() => handleDeletePortfolio(item.id, item.image_url)}
-                        className="bg-red-600 text-white px-4 py-2 rounded font-semibold text-sm hover:bg-red-700"
+                        className={styles.portfolioDeleteBtn}
                       >
                         Delete
                       </button>
@@ -630,7 +630,7 @@ export default function AdminPage() {
                   </div>
                 ))}
                 {portfolio.length === 0 && (
-                  <div className="col-span-full text-center py-12 text-[var(--color-text-muted)] border border-dashed border-[var(--color-border)] rounded-lg">
+                  <div className={styles.portfolioEmpty}>
                     No images in your portfolio yet.
                   </div>
                 )}

@@ -669,3 +669,102 @@
     grid-template-columns: repeat(3, 1fr);
   }
 }
+
+/* PORTFOLIO ADMIN STYLES */
+.formGroupFull {
+  grid-column: 1 / -1;
+  margin-top: 0.5rem;
+}
+
+.portfolioGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.portfolioCard {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background-color: #000;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.portfolioImageWrapper {
+  aspect-ratio: 1/1;
+  width: 100%;
+  position: relative;
+}
+
+.portfolioImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.portfolioInfo {
+  padding: 0.75rem;
+}
+
+.portfolioCardTitle {
+  color: white;
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 0.25rem;
+}
+
+.portfolioPrice {
+  color: var(--color-primary);
+  font-size: 0.85rem;
+}
+
+.portfolioDeleteOverlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.portfolioCard:hover .portfolioDeleteOverlay {
+  opacity: 1;
+}
+
+.portfolioDeleteBtn {
+  background-color: #ef4444;
+  color: white;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.portfolioDeleteBtn:hover {
+  background-color: #dc2626;
+}
+
+.portfolioEmpty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 3rem 0;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+}
+
+/* Reference images in Modal mobile fix */
+.referenceImagesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 0.5rem;
+}
