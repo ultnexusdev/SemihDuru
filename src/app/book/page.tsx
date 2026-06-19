@@ -25,7 +25,6 @@ const TIME_SLOTS = [
   "16:00", "16:30", "17:00", "17:30", "18:00"
 ];
 
-const DEPOSIT_AMOUNT = 50; // GBP
 
 const STEPS = ["Service", "Date & Time", "Your Details", "Deposit"];
 
@@ -55,6 +54,7 @@ function BookingForm() {
   // Calendar State
   const [currentMonthDate, setCurrentMonthDate] = useState(new Date());
   const [blockedSlots, setBlockedSlots] = useState<any[]>([]);
+  const [depositAmount, setDepositAmount] = useState(50);
 
   const [clientDetails, setClientDetails] = useState({
     name: "",
@@ -88,12 +88,17 @@ function BookingForm() {
       setSubmitError("Payment was canceled. You can try again.");
     }
 
-    // Fetch blocked slots
-    const fetchBlockedSlots = async () => {
-      const { data } = await supabase.from('blocked_slots').select('*');
-      if (data) setBlockedSlots(data);
+    // Fetch blocked slots and deposit setting
+    const fetchInitialData = async () => {
+      const { data: bData } = await supabase.from('blocked_slots').select('*');
+      if (bData) setBlockedSlots(bData);
+
+      const { data: sData } = await supabase.from('settings').select('*').eq('setting_key', 'deposit_amount_gbp').single();
+      if (sData && sData.setting_value) {
+        setDepositAmount(parseInt(sData.setting_value, 10) || 50);
+      }
     };
-    fetchBlockedSlots();
+    fetchInitialData();
   }, []);
 
   const handleNext = () => {
@@ -165,7 +170,7 @@ function BookingForm() {
             reference_image_url: referenceUrls,
             description: clientDetails.idea,
             deposit_paid: false,
-            deposit_amount: DEPOSIT_AMOUNT,
+            deposit_amount: depositAmount,
             status: 'pending'
           }
         ]);
@@ -479,7 +484,7 @@ function BookingForm() {
               </div>
               <div className={styles.summaryTotal}>
                 <span>Deposit Required Now:</span>
-                <span className="text-[var(--color-primary)]">£{DEPOSIT_AMOUNT}.00</span>
+                <span className="text-[var(--color-primary)]">£{depositAmount}.00</span>
               </div>
               <p className={styles.depositNote}>
                 * This deposit secures your appointment and will be deducted from the final price of your tattoo.
@@ -519,7 +524,7 @@ function BookingForm() {
                     <rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect>
                     <line x1="2" y1="10" x2="22" y2="10"></line>
                   </svg>
-                  {isSubmitting ? "Processing..." : `Pay £${DEPOSIT_AMOUNT} with Credit Card`}
+                  {isSubmitting ? "Processing..." : `Pay £${depositAmount} with Credit Card`}
                 </button>
 
                 {/* Google Pay */}
@@ -535,7 +540,6 @@ function BookingForm() {
                   Google Pay
                 </button>
                 
-                {/* PayPal */}
                 <button 
                   className={styles.paypalBtn}
                   onClick={() => handleCheckout('paypal')}
